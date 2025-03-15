@@ -15,9 +15,6 @@
 // Scenes
 typedef enum {
     FlipperTunerMainMenuScene,
-    FlipperTunerLotteryScene,
-    FlipperTunerGreetingInputScene,
-    FlipperTunerGreetingMessageScene,
     FlipperTunerPlayToneScene,
     FlipperTunerSaveTuningScene,
     FlipperTunerLoadTuningScene,
@@ -29,6 +26,7 @@ typedef enum {
     FlipperTunerSubmenuView,
     FlipperTunerWidgetView,
     FlipperTunerTextInputView,
+    FlipperTunerPlayToneView,
 } FlipperTunerView;
 
 // App object struct
@@ -38,45 +36,27 @@ typedef struct App {
     Submenu* submenu;
     Widget* widget;
     TextInput* text_input;
-    char* user_name;
-    uint8_t user_name_size;
+    View* play_tone_view;
+    FuriTimer* timer;
 } App;
 
 typedef enum {
-    FlipperTunerMainMenuSceneLottoNumbers,
-    FlipperTunerMainMenuSceneGreeting,
     FlipperTunerMainMenuScenePlayTone,
     FlipperTunerMainMenuSceneSaveTuning,
     FlipperTunerMainMenuSceneLoadTuning,
 } FlipperTunerMainMenuSceneIndex;
 
 typedef enum {
-    FlipperTunerMainMenuSceneLottoNumbersEvent,
-    FlipperTunerMainMenuSceneGreetingEvent,
     FlipperTunerMainMenuScenePlayToneEvent,
     FlipperTunerMainMenuSceneSaveTuningEvent,
     FlipperTunerMainMenuSceneLoadTuningEvent,
 } FlipperTunerMainMenuEvent;
 
-typedef enum {
-    FlipperTunerGreetingInputSceneSaveEvent,
-} FlipperTunerGreetingInputEvent;
-
 bool isPlaying;
-
-//// Enter, event & exit functions for all scenes
 
 void flipper_tuner_menu_callback(void* context, uint32_t index) {
     App* app = context;
     switch(index) {
-    case FlipperTunerMainMenuSceneLottoNumbers:
-        scene_manager_handle_custom_event(
-            app->scene_manager, FlipperTunerMainMenuSceneLottoNumbersEvent);
-        break;
-    case FlipperTunerMainMenuSceneGreeting:
-        scene_manager_handle_custom_event(
-            app->scene_manager, FlipperTunerMainMenuSceneGreetingEvent);
-        break;
     case FlipperTunerMainMenuScenePlayTone:
         scene_manager_handle_custom_event(
             app->scene_manager, FlipperTunerMainMenuScenePlayToneEvent);
@@ -92,22 +72,11 @@ void flipper_tuner_menu_callback(void* context, uint32_t index) {
     }
 }
 
+// Main Menu scene
 void flipper_tuner_main_menu_scene_on_enter(void* context) {
     App* app = context;
     submenu_reset(app->submenu); // Reset submenu
-    submenu_set_header(app->submenu, "Basic Scenes Demo"); // Set header
-    submenu_add_item(
-        app->submenu,
-        "Lotto Numbers",
-        FlipperTunerMainMenuSceneLottoNumbers,
-        flipper_tuner_menu_callback,
-        app); // Add Lotto Numbers menu item
-    submenu_add_item(
-        app->submenu,
-        "Greeting",
-        FlipperTunerMainMenuSceneGreeting,
-        flipper_tuner_menu_callback,
-        app); // Add Greeting menu item
+    submenu_set_header(app->submenu, "Flipper Tuner"); // Set header
     submenu_add_item(
         app->submenu,
         "Play Tone",
@@ -135,14 +104,6 @@ bool flipper_tuner_main_menu_scene_on_event(void* context, SceneManagerEvent eve
     switch(event.type) {
     case SceneManagerEventTypeCustom:
         switch(event.event) {
-        case FlipperTunerMainMenuSceneLottoNumbersEvent:
-            scene_manager_next_scene(app->scene_manager, FlipperTunerLotteryScene);
-            consumed = true;
-            break;
-        case FlipperTunerMainMenuSceneGreetingEvent:
-            scene_manager_next_scene(app->scene_manager, FlipperTunerGreetingInputScene);
-            consumed = true;
-            break;
         case FlipperTunerMainMenuScenePlayToneEvent:
             scene_manager_next_scene(app->scene_manager, FlipperTunerPlayToneScene);
             consumed = true;
@@ -167,103 +128,64 @@ void flipper_tuner_main_menu_scene_on_exit(void* context) {
     submenu_reset(app->submenu);
 }
 
-void flipper_tuner_lottery_scene_on_enter(void* context) {
-    App* app = context;
-    widget_reset(app->widget);
-    widget_add_string_element(
-        app->widget, 25, 15, AlignLeft, AlignCenter, FontPrimary, "Lotto Numbers:");
-    widget_add_string_element(
-        app->widget, 30, 35, AlignLeft, AlignCenter, FontBigNumbers, "0 4 2");
-    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperTunerWidgetView);
-}
-bool flipper_tuner_lottery_scene_on_event(void* context, SceneManagerEvent event) {
-    UNUSED(context);
-    UNUSED(event);
-    return false; // event not handled
-}
-void flipper_tuner_lottery_scene_on_exit(void* context) {
-    UNUSED(context);
-}
-
-void flipper_tuner_text_input_callback(void* context) {
-    App* app = context;
-    scene_manager_handle_custom_event(app->scene_manager, FlipperTunerGreetingInputSceneSaveEvent);
-}
-void flipper_tuner_greeting_input_scene_on_enter(void* context) {
-    App* app = context;
-    bool clear_text = true;
-
-    text_input_reset(app->text_input);
-    text_input_set_header_text(app->text_input, "Enter your name");
-    text_input_set_result_callback(
-        app->text_input,
-        flipper_tuner_text_input_callback,
-        app,
-        app->user_name,
-        app->user_name_size,
-        clear_text);
-    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperTunerTextInputView);
-}
-bool flipper_tuner_greeting_input_scene_on_event(void* context, SceneManagerEvent event) {
-    App* app = context;
-    bool consumed = false;
-
-    if(event.type == SceneManagerEventTypeCustom) {
-        if(event.event == FlipperTunerGreetingInputSceneSaveEvent) {
-            scene_manager_next_scene(app->scene_manager, FlipperTunerGreetingMessageScene);
-            consumed = true;
-        }
-    }
-
-    return consumed;
-}
-void flipper_tuner_greeting_input_scene_on_exit(void* context) {
-    UNUSED(context);
-}
-
-void flipper_tuner_greeting_message_scene_on_enter(void* context) {
-    App* app = context;
-    widget_reset(app->widget);
-    FuriString* message = furi_string_alloc();
-    furi_string_printf(message, "Hello,\n%s!", app->user_name);
-    widget_add_string_multiline_element(
-        app->widget, 5, 15, AlignLeft, AlignCenter, FontPrimary, furi_string_get_cstr(message));
-    furi_string_free(message);
-    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperTunerWidgetView);
-}
-bool flipper_tuner_greeting_message_scene_on_event(void* context, SceneManagerEvent event) {
-    UNUSED(context);
-    UNUSED(event);
-    return false; // event not handled
-}
-void flipper_tuner_greeting_message_scene_on_exit(void* context) {
-    App* app = context;
-    widget_reset(app->widget);
-}
-
 void play() {
     if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(1000)) {
         furi_hal_speaker_start(65.41, 50);
+        isPlaying = true;
     }
 }
 void stop() {
     if(furi_hal_speaker_is_mine()) {
         furi_hal_speaker_stop();
         furi_hal_speaker_release();
+        isPlaying = false;
     }
 }
 
+// Play tone scene
+bool play_tone_input_callback(InputEvent* event, void* context) {
+    UNUSED(context);
+    bool consumed = false;
+    if(event->type == InputTypeShort) {
+        if(event->key == InputKeyOk) {
+            if(isPlaying) {
+                play();
+            }
+            stop();
+            consumed = true;
+        }
+    }
+
+    return consumed;
+}
+void play_tone_view_draw_callback(Canvas* canvas, void* model) {
+    UNUSED(model);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str_aligned(canvas, 0, 0, AlignCenter, AlignCenter, "Testing");
+}
+// void play_tone_enter_callback(void* context) {
+//     uint32_t period = furi_ms_to_ticks(200);
+//     App* app = context;
+//     furi_assert(app->timer == NULL);
+//     app->timer = furi_timer_alloc(FuriTimerTypePeriodic, context);
+// }
+
 void flipper_tuner_play_tone_scene_on_enter(void* context) {
     App* app = context;
-    widget_reset(app->widget);
-    widget_add_string_element(
-        app->widget, 25, 15, AlignLeft, AlignCenter, FontPrimary, "Play Tone");
-    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperTunerWidgetView);
+    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperTunerPlayToneView);
 }
 bool flipper_tuner_play_tone_scene_on_event(void* context, SceneManagerEvent event) {
-    App* app = context;
-    UNUSED(event); // TODO: finish play tone implementation
-    return false;
+    UNUSED(context);
+    UNUSED(event);
+    bool consumed = false;
+    if(isPlaying) {
+        play();
+        consumed = true;
+    } else {
+        stop();
+        consumed = true;
+    }
+    return consumed;
 }
 void flipper_tuner_play_tone_scene_on_exit(void* context) {
     UNUSED(context);
@@ -297,9 +219,6 @@ void flipper_tuner_load_tuning_scene_on_exit(void* context) {
 // on_enter handlers
 void (*const flipper_tuner_scene_on_enter_handlers[])(void*) = {
     flipper_tuner_main_menu_scene_on_enter,
-    flipper_tuner_lottery_scene_on_enter,
-    flipper_tuner_greeting_input_scene_on_enter,
-    flipper_tuner_greeting_message_scene_on_enter,
     flipper_tuner_play_tone_scene_on_enter,
     flipper_tuner_save_tuning_scene_on_enter,
     flipper_tuner_load_tuning_scene_on_enter,
@@ -308,9 +227,6 @@ void (*const flipper_tuner_scene_on_enter_handlers[])(void*) = {
 // on_event handlers
 bool (*const flipper_tuner_scene_on_event_handlers[])(void*, SceneManagerEvent) = {
     flipper_tuner_main_menu_scene_on_event,
-    flipper_tuner_lottery_scene_on_event,
-    flipper_tuner_greeting_input_scene_on_event,
-    flipper_tuner_greeting_message_scene_on_event,
     flipper_tuner_play_tone_scene_on_event,
     flipper_tuner_save_tuning_scene_on_event,
     flipper_tuner_load_tuning_scene_on_event,
@@ -319,9 +235,6 @@ bool (*const flipper_tuner_scene_on_event_handlers[])(void*, SceneManagerEvent) 
 // on_exit handlers
 void (*const flipper_tuner_scene_on_exit_handlers[])(void*) = {
     flipper_tuner_main_menu_scene_on_exit,
-    flipper_tuner_lottery_scene_on_exit,
-    flipper_tuner_greeting_input_scene_on_exit,
-    flipper_tuner_greeting_message_scene_on_exit,
     flipper_tuner_play_tone_scene_on_exit,
     flipper_tuner_save_tuning_scene_on_exit,
     flipper_tuner_load_tuning_scene_on_exit,
@@ -353,10 +266,7 @@ static App* app_alloc() {
     App* app = malloc(sizeof(App));
     app->scene_manager = scene_manager_alloc(&flipper_tuner_scene_manager_handlers, app);
     app->view_dispatcher = view_dispatcher_alloc();
-    app->user_name_size = 16;
-    app->user_name = malloc(app->user_name_size);
 
-    //view_dispatcher_enable_queue(app->view_dispatcher);  DEPRECATED, on by default
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
     view_dispatcher_set_custom_event_callback(app->view_dispatcher, basic_scene_custom_callback);
     view_dispatcher_set_navigation_event_callback(
@@ -377,6 +287,11 @@ static App* app_alloc() {
     view_dispatcher_add_view(
         app->view_dispatcher, FlipperTunerTextInputView, text_input_get_view(app->text_input));
 
+    // Play Tone view
+    app->play_tone_view = view_alloc();
+    view_set_draw_callback(app->play_tone_view, play_tone_view_draw_callback);
+    view_set_input_callback(app->play_tone_view, play_tone_input_callback);
+
     return app;
 }
 
@@ -394,6 +309,7 @@ static void app_free(App* app) {
     submenu_free(app->submenu);
     widget_free(app->widget);
     text_input_free(app->text_input);
+    view_free(app->play_tone_view);
     free(app);
 }
 
