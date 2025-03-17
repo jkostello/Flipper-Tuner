@@ -14,10 +14,6 @@
 
 //// Enum/struct setups
 
-typedef struct Tuner {
-    View* view;
-} Tuner;
-
 typedef struct TunerState {
     float frequency;
     float volume;
@@ -49,6 +45,7 @@ typedef struct App {
     Widget* widget;
     TextInput* text_input;
     View* play_tone_view;
+    TunerState* tuner_state;
 } App;
 
 typedef enum {
@@ -139,7 +136,6 @@ void flipper_tuner_main_menu_scene_on_exit(void* context) {
     submenu_reset(app->submenu);
 }
 
-// TODO: create struct to store tuning fork state (volume, frequency, is playing) in App
 void play(TunerState* tunerState) {
     if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(1000)) {
         furi_hal_speaker_start(tunerState->frequency, tunerState->volume);
@@ -216,6 +212,7 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
     return consumed;
 }
 
+// TODO: add frequency & volume display to view
 void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     UNUSED(model);
     canvas_set_font(canvas, FontPrimary);
@@ -337,11 +334,11 @@ static App* app_alloc() {
     view_set_input_callback(app->play_tone_view, play_tone_input_callback);
     view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
 
-    TunerState* tunerState = malloc(sizeof(TunerState));
-    tunerState->frequency = 65.41f;
-    tunerState->volume = 1.0f;
-    tunerState->isPlaying = false;
-    view_set_context(app->play_tone_view, tunerState);
+    app->tuner_state = malloc(sizeof(TunerState));
+    app->tuner_state->frequency = 65.41f;
+    app->tuner_state->volume = 1.0f;
+    app->tuner_state->isPlaying = false;
+    view_set_context(app->play_tone_view, app->tuner_state);
     view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
 
     return app;
@@ -363,6 +360,7 @@ static void app_free(App* app) {
     widget_free(app->widget);
     text_input_free(app->text_input);
     view_free(app->play_tone_view);
+    free(app->tuner_state);
     free(app);
 }
 
