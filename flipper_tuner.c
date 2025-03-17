@@ -14,6 +14,16 @@
 
 //// Enum/struct setups
 
+typedef struct Tuner {
+    View* view;
+} Tuner;
+
+typedef struct TunerState {
+    float frequency;
+    float volume;
+    bool isPlaying;
+} TunerState;
+
 // Scenes
 typedef enum {
     FlipperTunerMainMenuScene,
@@ -129,55 +139,83 @@ void flipper_tuner_main_menu_scene_on_exit(void* context) {
     submenu_reset(app->submenu);
 }
 
-typedef struct Tuner {
-    View* view;
-} Tuner;
-
-typedef struct TunerState {
-    float frequency;
-    float volume;
-    bool isPlaying;
-} TunerState;
-
 // TODO: create struct to store tuning fork state (volume, frequency, is playing) in App
-void play() {
+void play(TunerState* tunerState) {
     if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(1000)) {
-        furi_hal_speaker_start(65.41, 50);
+        furi_hal_speaker_start(tunerState->frequency, tunerState->volume);
+        tunerState->isPlaying = true;
     }
 }
-void stop() {
+void stop(TunerState* tunerState) {
     if(furi_hal_speaker_is_mine()) {
         furi_hal_speaker_stop();
         furi_hal_speaker_release();
+        tunerState->isPlaying = false;
+    }
+}
+
+void increase_volume(TunerState* tunerState) {
+    if(tunerState->volume < 1.0f) {
+        tunerState->volume += 0.1f;
+    }
+}
+
+void decrease_volume(TunerState* tunerState) {
+    if(tunerState->volume > 0.0f) {
+        tunerState->volume -= 0.1f;
     }
 }
 
 // Play tone scene
-bool play_tone_input_callback(InputEvent* event, void* context) {
-    Tuner* tuner = context;
+static bool play_tone_input_callback(InputEvent* event, void* context) {
+    TunerState* tunerState = context;
     bool consumed = false;
 
     if(event->type == InputTypeShort) {
-        if(event->key == InputKeyOk) {
-            with_view_model(
-                tuner->view,
-                TunerState * model,
-                {
-                    if(!model.isPlaying) {
-                        play();
-                        model.isPlaying = true;
-                    } else {
-                        stop();
-                        mode.isPlaying = false;
-                    }
-                },
-                true);
-            FURI_LOG_I(TAG, "ok key pressed");
+        // Stop/start
+        switch(event->key) {
+        case InputKeyOk:
+            if(!tunerState->isPlaying) {
+                play(tunerState);
+            } else {
+                stop(tunerState);
+            }
+            break;
+        case InputKeyUp:
+            increase_volume(tunerState);
+            if(tunerState->isPlaying) {
+                stop(tunerState);
+                play(tunerState);
+            }
+            break;
+        case InputKeyDown:
+            decrease_volume(tunerState);
+            if(tunerState->isPlaying) {
+                stop(tunerState);
+                play(tunerState);
+            }
+            break;
+        case InputKeyLeft:
+            tunerState->frequency -= 100.0f;
+            stop(tunerState);
+            play(tunerState);
+            break;
+        case InputKeyRight:
+            tunerState->frequency += 100.0f;
+            stop(tunerState);
+            play(tunerState);
+            break;
+        case InputKeyBack:
+            stop(tunerState);
+        default:
+            break;
         }
+        FURI_LOG_I(TAG, "ok key pressed");
+        consumed = true;
     }
-
     return consumed;
 }
+
 void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     UNUSED(model);
     canvas_set_font(canvas, FontPrimary);
@@ -299,9 +337,12 @@ static App* app_alloc() {
     view_set_input_callback(app->play_tone_view, play_tone_input_callback);
     view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
 
-    Tuner* tuner = malloc(sizeof(Tuner));
-    view_set_context(tuner->view, tuner);
-    view_allocate_model(tuner->view, ViewModelTypeLockFree, sizeof(TunerState));
+    TunerState* tunerState = malloc(sizeof(TunerState));
+    tunerState->frequency = 65.41f;
+    tunerState->volume = 1.0f;
+    tunerState->isPlaying = false;
+    view_set_context(app->play_tone_view, tunerState);
+    view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
 
     return app;
 }
