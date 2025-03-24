@@ -6,6 +6,7 @@
 #include <gui/modules/submenu.h>
 #include <gui/modules/text_input.h>
 #include <furi_hal.h>
+#include "notes.h"
 
 #define TAG "flipper_tuner_app"
 
@@ -15,9 +16,10 @@
 //// Enum/struct setups
 
 typedef struct TunerState {
-    float frequency;
     float volume;
     bool isPlaying;
+    NOTE currentNote;
+    int currentNoteIndex;
 } TunerState;
 
 // Scenes
@@ -80,8 +82,6 @@ void flipper_tuner_menu_callback(void* context, uint32_t index) {
 
 // Main Menu scene
 void flipper_tuner_main_menu_scene_on_enter(void* context) {
-    FURI_LOG_I(TAG, "main menu reached!");
-
     App* app = context;
     submenu_reset(app->submenu); // Reset submenu
     submenu_set_header(app->submenu, "Flipper Tuner"); // Set header
@@ -138,7 +138,7 @@ void flipper_tuner_main_menu_scene_on_exit(void* context) {
 
 void play(TunerState* tunerState) {
     if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(1000)) {
-        furi_hal_speaker_start(tunerState->frequency, tunerState->volume);
+        furi_hal_speaker_start(tunerState->currentNote.frequency, tunerState->volume);
         tunerState->isPlaying = true;
     }
 }
@@ -159,6 +159,20 @@ void increase_volume(TunerState* tunerState) {
 void decrease_volume(TunerState* tunerState) {
     if(tunerState->volume > 0.0f) {
         tunerState->volume -= 0.1f;
+    }
+}
+
+void increase_frequency(TunerState* tunerState) {
+    if(((unsigned int)tunerState->currentNoteIndex) + 1 < (sizeof(tunings) / sizeof(tunings[0]))) {
+        tunerState->currentNoteIndex += 1;
+        tunerState->currentNote = tunings[tunerState->currentNoteIndex];
+    }
+}
+
+void decrease_frequency(TunerState* tunerState) {
+    if(tunerState->currentNoteIndex - 1 >= 0) {
+        tunerState->currentNoteIndex -= 1;
+        tunerState->currentNote = tunings[tunerState->currentNoteIndex];
     }
 }
 
@@ -192,14 +206,18 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
             }
             break;
         case InputKeyLeft:
-            tunerState->frequency -= 100.0f;
-            stop(tunerState);
-            play(tunerState);
+            decrease_frequency(tunerState);
+            if(tunerState->isPlaying) {
+                stop(tunerState);
+                play(tunerState);
+            }
             break;
         case InputKeyRight:
-            tunerState->frequency += 100.0f;
-            stop(tunerState);
-            play(tunerState);
+            increase_frequency(tunerState);
+            if(tunerState->isPlaying) {
+                stop(tunerState);
+                play(tunerState);
+            }
             break;
         case InputKeyBack:
             stop(tunerState);
@@ -214,9 +232,10 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
 
 // TODO: add frequency & volume display to view
 void play_tone_view_draw_callback(Canvas* canvas, void* model) {
-    UNUSED(model);
+    TunerState* tunerState = model;
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str_aligned(canvas, 35, 42, AlignCenter, AlignCenter, "Testing");
+    canvas_draw_str_aligned(
+        canvas, 35, 42, AlignCenter, AlignCenter, tunerState->currentNote.label);
 }
 
 void flipper_tuner_play_tone_scene_on_enter(void* context) {
@@ -335,7 +354,8 @@ static App* app_alloc() {
     view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
 
     app->tuner_state = malloc(sizeof(TunerState));
-    app->tuner_state->frequency = 65.41f;
+    app->tuner_state->currentNoteIndex = 0;
+    app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
     app->tuner_state->volume = 1.0f;
     app->tuner_state->isPlaying = false;
     view_set_context(app->play_tone_view, app->tuner_state);
