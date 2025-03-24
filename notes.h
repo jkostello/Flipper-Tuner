@@ -1,5 +1,5 @@
 typedef struct {
-    char label[5];
+    char label[8];
     float frequency;
 } NOTE;
 
@@ -8,7 +8,7 @@ const NOTE C0 = {
     16.35f,
 };
 const NOTE Cs0 = {
-    "Cs0",
+    "Cs0/Db0",
     17.32f,
 };
 const NOTE D0 = {
@@ -16,7 +16,7 @@ const NOTE D0 = {
     18.35f,
 };
 const NOTE Ds0 = {
-    "Ds0",
+    "Ds0/Eb0",
     19.45f,
 };
 const NOTE E0 = {
@@ -28,7 +28,7 @@ const NOTE F0 = {
     21.83f,
 };
 const NOTE Fs0 = {
-    "Fs0",
+    "Fs0/Gb0",
     23.12f,
 };
 const NOTE G0 = {
@@ -36,7 +36,7 @@ const NOTE G0 = {
     24.50f,
 };
 const NOTE Gs0 = {
-    "Gs0",
+    "Gs0Ab0",
     25.96f,
 };
 const NOTE A0 = {
@@ -44,7 +44,7 @@ const NOTE A0 = {
     27.50f,
 };
 const NOTE As0 = {
-    "As0",
+    "As0/Bb0",
     29.14f,
 };
 const NOTE B0 = {
@@ -56,7 +56,7 @@ const NOTE C1 = {
     32.70f,
 };
 const NOTE Cs1 = {
-    "Cs1",
+    "Cs1/Db1",
     34.65f,
 };
 const NOTE D1 = {
@@ -64,7 +64,7 @@ const NOTE D1 = {
     36.71f,
 };
 const NOTE Ds1 = {
-    "Ds1",
+    "Ds1/Eb1",
     38.89f,
 };
 const NOTE E1 = {
@@ -76,7 +76,7 @@ const NOTE F1 = {
     43.65f,
 };
 const NOTE Fs1 = {
-    "Fs1",
+    "Fs1/Gb1",
     46.25f,
 };
 const NOTE G1 = {
@@ -84,7 +84,7 @@ const NOTE G1 = {
     49.00f,
 };
 const NOTE Gs1 = {
-    "Gs1",
+    "Gs1/Ab1",
     51.91f,
 };
 const NOTE A1 = {
@@ -92,7 +92,7 @@ const NOTE A1 = {
     55.00f,
 };
 const NOTE As1 = {
-    "As1",
+    "As1/Bb1",
     58.27f,
 };
 const NOTE B1 = {
@@ -104,7 +104,7 @@ const NOTE C2 = {
     65.41f,
 };
 const NOTE Cs2 = {
-    "Cs2",
+    "Cs2/Db2",
     69.30f,
 };
 const NOTE D2 = {
@@ -112,7 +112,7 @@ const NOTE D2 = {
     73.416f,
 };
 const NOTE Ds2 = {
-    "Ds2",
+    "Ds2/Eb2",
     77.78f,
 };
 const NOTE E2 = {
@@ -124,7 +124,7 @@ const NOTE F2 = {
     87.31f,
 };
 const NOTE Fs2 = {
-    "Fs2",
+    "Fs2/Gb2",
     92.50f,
 };
 const NOTE G2 = {
@@ -132,7 +132,7 @@ const NOTE G2 = {
     97.999f,
 };
 const NOTE Gs2 = {
-    "Gs2",
+    "Gs2/Ab2",
     103.83f,
 };
 const NOTE A2 = {
@@ -140,7 +140,7 @@ const NOTE A2 = {
     110.00f,
 };
 const NOTE As2 = {
-    "As2",
+    "As2/Bb2",
     116.54f,
 };
 const NOTE B2 = {
@@ -152,7 +152,7 @@ const NOTE C3 = {
     130.813f,
 };
 const NOTE Cs3 = {
-    "Cs3",
+    "Cs3/Db3",
     138.59f,
 };
 const NOTE D3 = {
@@ -172,7 +172,7 @@ const NOTE F3 = {
     174.81f,
 };
 const NOTE Fs3 = {
-    "Fs3",
+    "Fs3/Gb3",
     185.00f,
 };
 const NOTE G3 = {
@@ -180,7 +180,7 @@ const NOTE G3 = {
     196.00f,
 };
 const NOTE Gs3 = {
-    "Gs3",
+    "Gs3/Ab3",
     207.65f,
 };
 const NOTE A3 = {
@@ -188,7 +188,7 @@ const NOTE A3 = {
     220.00f,
 };
 const NOTE As3 = {
-    "As3",
+    "As3/Bb3",
     233.08f,
 };
 const NOTE B3 = {
@@ -200,7 +200,7 @@ const NOTE C4 = {
     261.63f,
 };
 const NOTE Cs4 = {
-    "Cs4",
+    "Cs4/Db4",
     277.81f,
 };
 const NOTE D4 = {
@@ -208,7 +208,7 @@ const NOTE D4 = {
     293.66f,
 };
 const NOTE Ds4 = {
-    "Ds4",
+    "Ds4/Eb4",
     311.13f,
 };
 const NOTE E4 = {
@@ -220,7 +220,7 @@ const NOTE F4 = {
     349.23f,
 };
 const NOTE Fs4 = {
-    "Fs4",
+    "Fs4/Gb4",
     369.99f,
 };
 const NOTE G4 = {
@@ -228,7 +228,7 @@ const NOTE G4 = {
     392.00f,
 };
 const NOTE Gs4 = {
-    "Gs4",
+    "Gs4/Ab4",
     415.30f,
 };
 const NOTE A4 = {
@@ -236,7 +236,7 @@ const NOTE A4 = {
     440.00f,
 };
 const NOTE As4 = {
-    "As4",
+    "As4/Bb4",
     466.16f,
 };
 const NOTE B4 = {
@@ -248,7 +248,7 @@ const NOTE C5 = {
     523.25f,
 };
 const NOTE Cs5 = {
-    "Cs5",
+    "Cs5/Db5",
     466.16f,
 };
 const NOTE D5 = {
@@ -256,7 +256,7 @@ const NOTE D5 = {
     587.33f,
 };
 const NOTE Ds5 = {
-    "Ds5",
+    "Ds5/Eb5",
     622.25f,
 };
 const NOTE E5 = {
@@ -268,7 +268,7 @@ const NOTE F5 = {
     698.46f,
 };
 const NOTE Fs5 = {
-    "Fs5",
+    "Fs5/Gb5",
     739.99f,
 };
 const NOTE G5 = {
@@ -276,7 +276,7 @@ const NOTE G5 = {
     783.99f,
 };
 const NOTE Gs5 = {
-    "Gs5",
+    "Gs5/Ab5",
     830.61f,
 };
 const NOTE A5 = {
@@ -284,7 +284,7 @@ const NOTE A5 = {
     880.00f,
 };
 const NOTE As5 = {
-    "As5",
+    "As5/Bb5",
     932.33f,
 };
 const NOTE B5 = {
@@ -296,7 +296,7 @@ const NOTE C6 = {
     1046.50f,
 };
 const NOTE Cs6 = {
-    "Cs6",
+    "Cs6/Db6",
     1108.73f,
 };
 const NOTE D6 = {
@@ -304,7 +304,7 @@ const NOTE D6 = {
     1174.66f,
 };
 const NOTE Ds6 = {
-    "Ds6",
+    "Ds6/Eb6",
     1244.51f,
 };
 const NOTE E6 = {
@@ -316,7 +316,7 @@ const NOTE F6 = {
     1396.91f,
 };
 const NOTE Fs6 = {
-    "Fs6",
+    "Fs6/Gb6",
     1479.98f,
 };
 const NOTE G6 = {
@@ -324,7 +324,7 @@ const NOTE G6 = {
     1567.98f,
 };
 const NOTE Gs6 = {
-    "Gs6",
+    "Gs6/Ab6",
     1661.21f,
 };
 const NOTE A6 = {
@@ -332,7 +332,7 @@ const NOTE A6 = {
     1760.00f,
 };
 const NOTE As6 = {
-    "As6",
+    "As6/Bb6",
     1864.66f,
 };
 const NOTE B6 = {
@@ -344,7 +344,7 @@ const NOTE C7 = {
     2093.00f,
 };
 const NOTE Cs7 = {
-    "Cs7",
+    "Cs7/Db7",
     2217.46f,
 };
 const NOTE D7 = {
@@ -352,7 +352,7 @@ const NOTE D7 = {
     2349.32f,
 };
 const NOTE Ds7 = {
-    "Ds7",
+    "Ds7/Eb7",
     2489.02f,
 };
 const NOTE E7 = {
@@ -364,7 +364,7 @@ const NOTE F7 = {
     2793.83f,
 };
 const NOTE Fs7 = {
-    "Fs7",
+    "Fs7/Gb7",
     2959.96f,
 };
 const NOTE G7 = {
@@ -372,7 +372,7 @@ const NOTE G7 = {
     3135.96f,
 };
 const NOTE Gs7 = {
-    "Gs7",
+    "Gs7/Ab7",
     3322.44f,
 };
 const NOTE A7 = {
@@ -380,7 +380,7 @@ const NOTE A7 = {
     3520.00f,
 };
 const NOTE As7 = {
-    "As7",
+    "As7/Bb7",
     3729.31f,
 };
 const NOTE B7 = {
@@ -392,7 +392,7 @@ const NOTE C8 = {
     4186.01f,
 };
 const NOTE Cs8 = {
-    "Cs8",
+    "Cs8/Db8",
     4434.92f,
 };
 const NOTE D8 = {
@@ -400,7 +400,7 @@ const NOTE D8 = {
     4698.63f,
 };
 const NOTE Ds8 = {
-    "Ds8",
+    "Ds8/Eb8",
     4978.03f,
 };
 const NOTE E8 = {
@@ -412,7 +412,7 @@ const NOTE F8 = {
     5587.65f,
 };
 const NOTE Fs8 = {
-    "Fs8",
+    "Fs8/Gb8",
     5919.91f,
 };
 const NOTE G8 = {
@@ -420,7 +420,7 @@ const NOTE G8 = {
     6271.93f,
 };
 const NOTE Gs8 = {
-    "Gs8",
+    "Gs8/Ab8",
     6644.88f,
 };
 const NOTE A8 = {
@@ -428,7 +428,7 @@ const NOTE A8 = {
     7040.00f,
 };
 const NOTE As8 = {
-    "As8",
+    "As8/Bb8",
     7458.62f,
 };
 const NOTE B8 = {
