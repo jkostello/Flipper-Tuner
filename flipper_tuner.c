@@ -7,6 +7,7 @@
 #include <gui/modules/text_input.h>
 #include <furi_hal.h>
 #include "notes.h"
+#include <string.h>
 
 #define TAG "flipper_tuner_app"
 
@@ -26,8 +27,7 @@ typedef struct TunerState {
 typedef enum {
     FlipperTunerMainMenuScene,
     FlipperTunerPlayToneScene,
-    FlipperTunerSaveTuningScene,
-    FlipperTunerLoadTuningScene,
+    FlipperTunerMetronomeScene,
     FlipperTunerSceneCount,
 } FlipperTunerScene;
 
@@ -52,14 +52,12 @@ typedef struct App {
 
 typedef enum {
     FlipperTunerMainMenuScenePlayTone,
-    FlipperTunerMainMenuSceneSaveTuning,
-    FlipperTunerMainMenuSceneLoadTuning,
+    FlipperTunerMainMenuSceneMetronome,
 } FlipperTunerMainMenuSceneIndex;
 
 typedef enum {
     FlipperTunerMainMenuScenePlayToneEvent,
-    FlipperTunerMainMenuSceneSaveTuningEvent,
-    FlipperTunerMainMenuSceneLoadTuningEvent,
+    FlipperTunerMainMenuSceneMetronomeEvent,
 } FlipperTunerMainMenuEvent;
 
 void flipper_tuner_menu_callback(void* context, uint32_t index) {
@@ -69,13 +67,9 @@ void flipper_tuner_menu_callback(void* context, uint32_t index) {
         scene_manager_handle_custom_event(
             app->scene_manager, FlipperTunerMainMenuScenePlayToneEvent);
         break;
-    case FlipperTunerMainMenuSceneSaveTuning:
+    case FlipperTunerMainMenuSceneMetronome:
         scene_manager_handle_custom_event(
-            app->scene_manager, FlipperTunerMainMenuSceneSaveTuningEvent);
-        break;
-    case FlipperTunerMainMenuSceneLoadTuning:
-        scene_manager_handle_custom_event(
-            app->scene_manager, FlipperTunerMainMenuSceneLoadTuningEvent);
+            app->scene_manager, FlipperTunerMainMenuSceneMetronomeEvent);
         break;
     }
 }
@@ -93,14 +87,8 @@ void flipper_tuner_main_menu_scene_on_enter(void* context) {
         app);
     submenu_add_item(
         app->submenu,
-        "Save New Tuning",
-        FlipperTunerMainMenuSceneSaveTuning,
-        flipper_tuner_menu_callback,
-        app);
-    submenu_add_item(
-        app->submenu,
-        "Load Tuning",
-        FlipperTunerMainMenuSceneLoadTuning,
+        "Metronome",
+        FlipperTunerMainMenuSceneMetronome,
         flipper_tuner_menu_callback,
         app);
     view_dispatcher_switch_to_view(app->view_dispatcher, FlipperTunerSubmenuView);
@@ -116,12 +104,8 @@ bool flipper_tuner_main_menu_scene_on_event(void* context, SceneManagerEvent eve
             scene_manager_next_scene(app->scene_manager, FlipperTunerPlayToneScene);
             consumed = true;
             break;
-        case FlipperTunerMainMenuSceneSaveTuningEvent:
-            scene_manager_next_scene(app->scene_manager, FlipperTunerSaveTuningScene);
-            consumed = true;
-            break;
-        case FlipperTunerMainMenuSceneLoadTuningEvent:
-            scene_manager_next_scene(app->scene_manager, FlipperTunerLoadTuningScene);
+        case FlipperTunerMainMenuSceneMetronomeEvent:
+            scene_manager_next_scene(app->scene_manager, FlipperTunerMetronomeScene);
             consumed = true;
             break;
         }
@@ -173,6 +157,12 @@ void decrease_frequency(TunerState* tunerState) {
     if(tunerState->currentNoteIndex - 1 >= 0) {
         tunerState->currentNoteIndex -= 1;
         tunerState->currentNote = tunings[tunerState->currentNoteIndex];
+    }
+}
+
+static void current_note(TunerState* tunerState, char* outLabel) {
+    if(outLabel) {
+        strncpy(outLabel, tunerState->currentNote.label, 8);
     }
 }
 
@@ -230,12 +220,17 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
     return consumed;
 }
 
-// TODO: add frequency & volume display to view
 void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     TunerState* tunerState = model;
+    assert(tunerState);
+
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str_aligned(
-        canvas, 35, 42, AlignCenter, AlignCenter, tunerState->currentNote.label);
+    FuriString* note = furi_string_alloc();
+    char noteLabel[8];
+    current_note(tunerState, noteLabel);
+    furi_string_printf(note, "< %s >", noteLabel); // FIXME: noteLabel not displaying anything
+    canvas_draw_str_aligned(canvas, 20, 10, AlignCenter, AlignCenter, furi_string_get_cstr(note));
+    furi_string_free(note);
 }
 
 void flipper_tuner_play_tone_scene_on_enter(void* context) {
@@ -251,27 +246,15 @@ void flipper_tuner_play_tone_scene_on_exit(void* context) {
     UNUSED(context);
 }
 
-void flipper_tuner_save_tuning_scene_on_enter(void* context) {
+void flipper_tuner_metronome_scene_on_enter(void* context) {
     UNUSED(context);
 }
-bool flipper_tuner_save_tuning_scene_on_event(void* context, SceneManagerEvent event) {
-    UNUSED(context);
-    UNUSED(event);
-    return false;
-}
-void flipper_tuner_save_tuning_scene_on_exit(void* context) {
-    UNUSED(context);
-}
-
-void flipper_tuner_load_tuning_scene_on_enter(void* context) {
-    UNUSED(context);
-}
-bool flipper_tuner_load_tuning_scene_on_event(void* context, SceneManagerEvent event) {
+bool flipper_tuner_metronome_scene_on_event(void* context, SceneManagerEvent event) {
     UNUSED(context);
     UNUSED(event);
     return false;
 }
-void flipper_tuner_load_tuning_scene_on_exit(void* context) {
+void flipper_tuner_metronome_scene_on_exit(void* context) {
     UNUSED(context);
 }
 
@@ -280,24 +263,21 @@ void flipper_tuner_load_tuning_scene_on_exit(void* context) {
 void (*const flipper_tuner_scene_on_enter_handlers[])(void*) = {
     flipper_tuner_main_menu_scene_on_enter,
     flipper_tuner_play_tone_scene_on_enter,
-    flipper_tuner_save_tuning_scene_on_enter,
-    flipper_tuner_load_tuning_scene_on_enter,
+    flipper_tuner_metronome_scene_on_enter,
 };
 
 // on_event handlers
 bool (*const flipper_tuner_scene_on_event_handlers[])(void*, SceneManagerEvent) = {
     flipper_tuner_main_menu_scene_on_event,
     flipper_tuner_play_tone_scene_on_event,
-    flipper_tuner_save_tuning_scene_on_event,
-    flipper_tuner_load_tuning_scene_on_event,
+    flipper_tuner_metronome_scene_on_event,
 };
 
 // on_exit handlers
 void (*const flipper_tuner_scene_on_exit_handlers[])(void*) = {
     flipper_tuner_main_menu_scene_on_exit,
     flipper_tuner_play_tone_scene_on_exit,
-    flipper_tuner_save_tuning_scene_on_exit,
-    flipper_tuner_load_tuning_scene_on_exit,
+    flipper_tuner_metronome_scene_on_exit,
 };
 
 // scene manager handler object
@@ -349,16 +329,18 @@ static App* app_alloc() {
 
     // Play Tone view
     app->play_tone_view = view_alloc();
+
+    app->tuner_state = malloc(sizeof(TunerState));
+    app->tuner_state->currentNoteIndex = 55; // A4
+    app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
+    app->tuner_state->volume = 1.0f;
+    app->tuner_state->isPlaying = false;
+
+    view_set_context(app->play_tone_view, app->tuner_state); // FIXME: not working??
     view_set_draw_callback(app->play_tone_view, play_tone_view_draw_callback);
     view_set_input_callback(app->play_tone_view, play_tone_input_callback);
     view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
 
-    app->tuner_state = malloc(sizeof(TunerState));
-    app->tuner_state->currentNoteIndex = 0;
-    app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
-    app->tuner_state->volume = 1.0f;
-    app->tuner_state->isPlaying = false;
-    view_set_context(app->play_tone_view, app->tuner_state);
     view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
 
     return app;

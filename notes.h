@@ -249,7 +249,7 @@ const NOTE C5 = {
 };
 const NOTE Cs5 = {
     "Cs5/Db5",
-    466.16f,
+    554.37f,
 };
 const NOTE D5 = {
     "D5",
