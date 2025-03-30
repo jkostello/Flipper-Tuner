@@ -160,11 +160,11 @@ void decrease_frequency(TunerState* tunerState) {
     }
 }
 
-static void current_note(TunerState* tunerState, char* outLabel) {
-    if(outLabel) {
-        strncpy(outLabel, tunerState->currentNote.label, 8);
-    }
-}
+// static void current_note(TunerState* tunerState, char* outLabel) {
+//     if(outLabel) {
+//         strncpy(outLabel, tunerState->currentNote.label, 8);
+//     }
+// }
 
 // Play tone scene
 static bool play_tone_input_callback(InputEvent* event, void* context) {
@@ -221,13 +221,15 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
 }
 
 void play_tone_view_draw_callback(Canvas* canvas, void* model) {
+    furi_assert(model);
     TunerState* tunerState = model;
-    assert(tunerState);
 
+    canvas_draw_frame(canvas, 0, 0, 128, 64);
     canvas_set_font(canvas, FontPrimary);
+
     FuriString* note = furi_string_alloc();
     char noteLabel[8];
-    current_note(tunerState, noteLabel);
+    strncpy(noteLabel, tunerState->currentNote.label, 8);
     furi_string_printf(note, "< %s >", noteLabel); // FIXME: noteLabel not displaying anything
     canvas_draw_str_aligned(canvas, 20, 10, AlignCenter, AlignCenter, furi_string_get_cstr(note));
     furi_string_free(note);
@@ -330,13 +332,20 @@ static App* app_alloc() {
     // Play Tone view
     app->play_tone_view = view_alloc();
 
-    app->tuner_state = malloc(sizeof(TunerState));
+    // app->tuner_state = malloc(sizeof(TunerState));
+    // app->tuner_state->currentNoteIndex = 55; // A4
+    // app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
+    // app->tuner_state->volume = 1.0f;
+    // app->tuner_state->isPlaying = false;
+
+    // FIXME: furi_check failed? [ERROR] Error: ClearCommError failed (PermissionError(13, 'The device does not recognize the command.', None, 22))
+    //view_set_context(app->play_tone_view, app->tuner_state);
+    view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
+    app->tuner_state = view_get_model(app->play_tone_view);
     app->tuner_state->currentNoteIndex = 55; // A4
     app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
     app->tuner_state->volume = 1.0f;
     app->tuner_state->isPlaying = false;
-
-    view_set_context(app->play_tone_view, app->tuner_state); // FIXME: not working??
     view_set_draw_callback(app->play_tone_view, play_tone_view_draw_callback);
     view_set_input_callback(app->play_tone_view, play_tone_input_callback);
     view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
