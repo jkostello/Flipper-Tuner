@@ -16,13 +16,6 @@
 
 //// Enum/struct setups
 
-typedef struct TunerState {
-    float volume;
-    bool isPlaying;
-    NOTE currentNote;
-    int currentNoteIndex;
-} TunerState;
-
 // Scenes
 typedef enum {
     FlipperTunerMainMenuScene,
@@ -38,6 +31,14 @@ typedef enum {
     FlipperTunerTextInputView,
     FlipperTunerPlayToneView,
 } FlipperTunerView;
+
+typedef struct TunerState {
+    float volume;
+    bool isPlaying;
+    NOTE currentNote;
+    int currentNoteIndex;
+    FuriString* currentNoteLabel;
+} TunerState;
 
 // App object struct
 typedef struct App {
@@ -160,15 +161,10 @@ void decrease_frequency(TunerState* tunerState) {
     }
 }
 
-// static void current_note(TunerState* tunerState, char* outLabel) {
-//     if(outLabel) {
-//         strncpy(outLabel, tunerState->currentNote.label, 8);
-//     }
-// }
-
 // Play tone scene
 static bool play_tone_input_callback(InputEvent* event, void* context) {
-    TunerState* tunerState = context;
+    App* app = context;
+    TunerState* tunerState = app->tuner_state;
     bool consumed = false;
 
     if(event->type == InputTypeShort) {
@@ -214,7 +210,11 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
         default:
             break;
         }
-        FURI_LOG_I(TAG, "ok key pressed");
+        with_view_model(
+            app->play_tone_view,
+            TunerState * model,
+            { UNUSED(model); },
+            true); // Call to update view
         consumed = true;
     }
     return consumed;
@@ -228,10 +228,16 @@ void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     canvas_set_font(canvas, FontPrimary);
 
     FuriString* note = furi_string_alloc();
-    char noteLabel[8];
-    strncpy(noteLabel, tunerState->currentNote.label, 8);
-    furi_string_printf(note, "< %s >", noteLabel); // FIXME: noteLabel not displaying anything
-    canvas_draw_str_aligned(canvas, 20, 10, AlignCenter, AlignCenter, furi_string_get_cstr(note));
+
+    // Draw note label
+    furi_string_printf(note, "< %s >", tunerState->currentNote.label);
+    canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, furi_string_get_cstr(note));
+
+    // Draw volume
+    int volumePercent = (int)round(tunerState->volume * 100);
+    furi_string_printf(note, "Volume: %d%%", volumePercent);
+    canvas_draw_str_aligned(canvas, 64, 36, AlignCenter, AlignCenter, furi_string_get_cstr(note));
+
     furi_string_free(note);
 }
 
@@ -245,7 +251,11 @@ bool flipper_tuner_play_tone_scene_on_event(void* context, SceneManagerEvent eve
     return false;
 }
 void flipper_tuner_play_tone_scene_on_exit(void* context) {
-    UNUSED(context);
+    App* app = context;
+    TunerState* tunerState = app->tuner_state;
+    if(tunerState->isPlaying) {
+        stop(tunerState);
+    }
 }
 
 void flipper_tuner_metronome_scene_on_enter(void* context) {
@@ -332,25 +342,18 @@ static App* app_alloc() {
     // Play Tone view
     app->play_tone_view = view_alloc();
 
-    // app->tuner_state = malloc(sizeof(TunerState));
-    // app->tuner_state->currentNoteIndex = 55; // A4
-    // app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
-    // app->tuner_state->volume = 1.0f;
-    // app->tuner_state->isPlaying = false;
+    view_set_draw_callback(app->play_tone_view, play_tone_view_draw_callback);
+    view_set_input_callback(app->play_tone_view, play_tone_input_callback);
 
-    // FIXME: furi_check failed? [ERROR] Error: ClearCommError failed (PermissionError(13, 'The device does not recognize the command.', None, 22))
-    //view_set_context(app->play_tone_view, app->tuner_state);
     view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
     app->tuner_state = view_get_model(app->play_tone_view);
-    app->tuner_state->currentNoteIndex = 55; // A4
+    app->tuner_state->currentNoteIndex = 57; // A4
     app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
     app->tuner_state->volume = 1.0f;
     app->tuner_state->isPlaying = false;
-    view_set_draw_callback(app->play_tone_view, play_tone_view_draw_callback);
-    view_set_input_callback(app->play_tone_view, play_tone_input_callback);
-    view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
+    view_set_context(app->play_tone_view, app);
 
-    view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
+    view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
 
     return app;
 }
@@ -388,17 +391,3 @@ int32_t flipper_tuner_app(void* p) {
     app_free(app);
     return 0;
 }
-
-// Scenes enum
-// Views enum
-// index enum??
-// event enums??
-// menu callback function
-// _on_enter, _on_event, _on_exit functions for each scene
-// _on_enter_handlers, _on_event_handlers, _on_exit_handlers arrays
-// SceneManagerHandlers object
-// _custom_callback function
-// _back_event_callback function
-// app_alloc function
-// app_free function
-// app function
