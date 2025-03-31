@@ -227,18 +227,18 @@ void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     canvas_draw_frame(canvas, 0, 0, 128, 64);
     canvas_set_font(canvas, FontPrimary);
 
-    FuriString* note = furi_string_alloc();
+    FuriString* info = furi_string_alloc();
 
     // Draw note label
-    furi_string_printf(note, "< %s >", tunerState->currentNote.label);
-    canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, furi_string_get_cstr(note));
+    furi_string_printf(info, "< %s >", tunerState->currentNote.label);
+    canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, furi_string_get_cstr(info));
 
     // Draw volume
     int volumePercent = (int)round(tunerState->volume * 100);
-    furi_string_printf(note, "Volume: %d%%", volumePercent);
-    canvas_draw_str_aligned(canvas, 64, 36, AlignCenter, AlignCenter, furi_string_get_cstr(note));
+    furi_string_printf(info, "Volume: %d%%", volumePercent);
+    canvas_draw_str_aligned(canvas, 64, 36, AlignCenter, AlignCenter, furi_string_get_cstr(info));
 
-    furi_string_free(note);
+    furi_string_free(info);
 }
 
 void flipper_tuner_play_tone_scene_on_enter(void* context) {
