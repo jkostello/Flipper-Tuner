@@ -61,6 +61,10 @@ typedef enum {
     FlipperTunerMainMenuSceneMetronomeEvent,
 } FlipperTunerMainMenuEvent;
 
+int get_tunings_size() {
+    return (sizeof(tunings) / sizeof(tunings[0]));
+}
+
 void flipper_tuner_menu_callback(void* context, uint32_t index) {
     App* app = context;
     switch(index) {
@@ -135,6 +139,13 @@ void stop(TunerState* tunerState) {
     }
 }
 
+void restart_player(TunerState* tunerState) {
+    if(tunerState->isPlaying) {
+        stop(tunerState);
+        play(tunerState);
+    }
+}
+
 void increase_volume(TunerState* tunerState) {
     if(tunerState->volume < 1.0f) {
         tunerState->volume += 0.1f;
@@ -147,16 +158,16 @@ void decrease_volume(TunerState* tunerState) {
     }
 }
 
-void increase_frequency(TunerState* tunerState) {
-    if(((unsigned int)tunerState->currentNoteIndex) + 1 < (sizeof(tunings) / sizeof(tunings[0]))) {
-        tunerState->currentNoteIndex += 1;
+void increase_frequency(TunerState* tunerState, int semitones) {
+    if(tunerState->currentNoteIndex + semitones < get_tunings_size()) {
+        tunerState->currentNoteIndex += semitones;
         tunerState->currentNote = tunings[tunerState->currentNoteIndex];
     }
 }
 
-void decrease_frequency(TunerState* tunerState) {
-    if(tunerState->currentNoteIndex - 1 >= 0) {
-        tunerState->currentNoteIndex -= 1;
+void decrease_frequency(TunerState* tunerState, int semitones) {
+    if(tunerState->currentNoteIndex - semitones >= 0) {
+        tunerState->currentNoteIndex -= semitones;
         tunerState->currentNote = tunings[tunerState->currentNoteIndex];
     }
 }
@@ -179,34 +190,53 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
             break;
         case InputKeyUp:
             increase_volume(tunerState);
-            if(tunerState->isPlaying) {
-                stop(tunerState);
-                play(tunerState);
-            }
+            restart_player(tunerState);
             break;
         case InputKeyDown:
             decrease_volume(tunerState);
-            if(tunerState->isPlaying) {
-                stop(tunerState);
-                play(tunerState);
-            }
+            restart_player(tunerState);
             break;
         case InputKeyLeft:
-            decrease_frequency(tunerState);
-            if(tunerState->isPlaying) {
-                stop(tunerState);
-                play(tunerState);
-            }
+            decrease_frequency(tunerState, 1);
+            restart_player(tunerState);
             break;
         case InputKeyRight:
-            increase_frequency(tunerState);
-            if(tunerState->isPlaying) {
-                stop(tunerState);
-                play(tunerState);
-            }
+            increase_frequency(tunerState, 1);
+            restart_player(tunerState);
             break;
         case InputKeyBack:
-            stop(tunerState);
+            scene_manager_handle_back_event(app->scene_manager);
+            break;
+        default:
+            break;
+        }
+        with_view_model(
+            app->play_tone_view,
+            TunerState * model,
+            { UNUSED(model); },
+            true); // Call to update view
+        consumed = true;
+    } else if(event->type == InputTypeLong) {
+        switch(event->key) {
+        case InputKeyUp:
+            tunerState->volume = 1;
+            restart_player(tunerState);
+            break;
+        case InputKeyDown:
+            tunerState->volume = 0;
+            restart_player(tunerState);
+            break;
+        case InputKeyLeft:
+            decrease_frequency(tunerState, 12);
+            restart_player(tunerState);
+            break;
+        case InputKeyRight:
+            increase_frequency(tunerState, 12);
+            restart_player(tunerState);
+            break;
+        case InputKeyBack:
+            scene_manager_handle_back_event(app->scene_manager);
+            break;
         default:
             break;
         }
@@ -252,9 +282,8 @@ bool flipper_tuner_play_tone_scene_on_event(void* context, SceneManagerEvent eve
 }
 void flipper_tuner_play_tone_scene_on_exit(void* context) {
     App* app = context;
-    TunerState* tunerState = app->tuner_state;
-    if(tunerState->isPlaying) {
-        stop(tunerState);
+    if(app->tuner_state->isPlaying) {
+        stop(app->tuner_state);
     }
 }
 
