@@ -8,6 +8,7 @@
 #include <furi_hal.h>
 #include "notes.h"
 #include <string.h>
+#include <gui/elements.h>
 
 #define TAG "flipper_tuner_app"
 
@@ -269,6 +270,15 @@ void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     canvas_draw_str_aligned(canvas, 64, 36, AlignCenter, AlignCenter, furi_string_get_cstr(info));
 
     furi_string_free(info);
+
+    // Draw controls
+    canvas_set_font(canvas, FontSecondary);
+    tunerState->isPlaying ? elements_button_center(canvas, "Stop") :
+                            elements_button_center(canvas, "Play");
+    elements_button_right(canvas, "Note Up");
+    elements_button_left(canvas, "Note Down");
+    elements_button_down(canvas, "Vol Down");
+    elements_button_up(canvas, "Vol Up");
 }
 
 void flipper_tuner_play_tone_scene_on_enter(void* context) {
