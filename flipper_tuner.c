@@ -2,9 +2,7 @@
 #include <gui/gui.h>
 #include <gui/view_dispatcher.h>
 #include <gui/scene_manager.h>
-#include <gui/modules/widget.h>
 #include <gui/modules/submenu.h>
-#include <gui/modules/text_input.h>
 #include <furi_hal.h>
 #include "notes.h"
 #include <string.h>
@@ -28,8 +26,6 @@ typedef enum {
 // Views
 typedef enum {
     FlipperTunerSubmenuView,
-    FlipperTunerWidgetView,
-    FlipperTunerTextInputView,
     FlipperTunerPlayToneView,
     FlipperTunerMetronomeView,
 } FlipperTunerView;
@@ -53,8 +49,6 @@ typedef struct App {
     SceneManager* scene_manager;
     ViewDispatcher* view_dispatcher;
     Submenu* submenu;
-    Widget* widget;
-    TextInput* text_input;
     View* play_tone_view;
     TunerState* tuner_state;
     View* metronome_view;
@@ -334,6 +328,7 @@ void metronome_view_draw_callback(Canvas* canvas, void* model) {
 
 void flipper_tuner_metronome_scene_on_enter(void* context) {
     UNUSED(context);
+    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperTunerMetronomeView);
 }
 bool flipper_tuner_metronome_scene_on_event(void* context, SceneManagerEvent event) {
     UNUSED(context);
@@ -442,16 +437,6 @@ static App* app_alloc() {
     view_dispatcher_add_view(
         app->view_dispatcher, FlipperTunerSubmenuView, submenu_get_view(app->submenu));
 
-    // Widget view
-    app->widget = widget_alloc();
-    view_dispatcher_add_view(
-        app->view_dispatcher, FlipperTunerWidgetView, widget_get_view(app->widget));
-
-    // Text input view
-    app->text_input = text_input_alloc();
-    view_dispatcher_add_view(
-        app->view_dispatcher, FlipperTunerTextInputView, text_input_get_view(app->text_input));
-
     play_tone_alloc(app);
 
     metronome_alloc(app);
@@ -464,8 +449,6 @@ static void app_free(App* app) {
 
     // Remove views
     view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerSubmenuView);
-    view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerWidgetView);
-    view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerTextInputView);
     view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerPlayToneView);
     view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerMetronomeView);
 
@@ -473,8 +456,6 @@ static void app_free(App* app) {
     scene_manager_free(app->scene_manager);
     view_dispatcher_free(app->view_dispatcher);
     submenu_free(app->submenu);
-    widget_free(app->widget);
-    text_input_free(app->text_input);
 
     view_free(app->play_tone_view);
     free(app->tuner_state);
