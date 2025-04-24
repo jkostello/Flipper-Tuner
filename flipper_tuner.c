@@ -31,6 +31,7 @@ typedef enum {
     FlipperTunerWidgetView,
     FlipperTunerTextInputView,
     FlipperTunerPlayToneView,
+    FlipperTunerMetronomeView,
 } FlipperTunerView;
 
 typedef struct TunerState {
@@ -41,6 +42,12 @@ typedef struct TunerState {
     FuriString* currentNoteLabel;
 } TunerState;
 
+typedef struct MetronomeState {
+    int bpm;
+    bool isPlaying;
+    float pitch;
+} MetronomeState;
+
 // App object struct
 typedef struct App {
     SceneManager* scene_manager;
@@ -50,6 +57,8 @@ typedef struct App {
     TextInput* text_input;
     View* play_tone_view;
     TunerState* tuner_state;
+    View* metronome_view;
+    MetronomeState* metronome_state;
 } App;
 
 typedef enum {
@@ -275,10 +284,10 @@ void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     canvas_set_font(canvas, FontSecondary);
     tunerState->isPlaying ? elements_button_center(canvas, "Stop") :
                             elements_button_center(canvas, "Play");
-    elements_button_right(canvas, "Note Up");
-    elements_button_left(canvas, "Note Down");
-    elements_button_down(canvas, "Vol Down");
-    elements_button_up(canvas, "Vol Up");
+    elements_button_right(canvas, "Note ^");
+    elements_button_left(canvas, "Note v");
+    elements_button_down(canvas, "Vol v");
+    elements_button_up(canvas, "Vol ^");
 }
 
 void flipper_tuner_play_tone_scene_on_enter(void* context) {
@@ -295,6 +304,32 @@ void flipper_tuner_play_tone_scene_on_exit(void* context) {
     if(app->tuner_state->isPlaying) {
         stop(app->tuner_state);
     }
+}
+
+static bool metronome_input_callback(InputEvent* event, void* context) {
+    App* app = context;
+
+    bool consumed = false;
+
+    if(event->key == InputKeyBack) {
+        scene_manager_handle_back_event(app->scene_manager);
+        consumed = true;
+    }
+
+    return consumed;
+}
+
+void metronome_view_draw_callback(Canvas* canvas, void* model) {
+    furi_assert(model);
+    MetronomeState* metronome_state = model;
+
+    canvas_draw_frame(canvas, 0, 0, 128, 64);
+    canvas_set_font(canvas, FontPrimary);
+
+    FuriString* info = furi_string_alloc();
+    furi_string_printf(info, "BPM: %d", metronome_state->bpm);
+    canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, furi_string_get_cstr(info));
+    furi_string_free(info);
 }
 
 void flipper_tuner_metronome_scene_on_enter(void* context) {
@@ -352,7 +387,46 @@ bool basic_scene_back_event_callback(void* context) {
     return scene_manager_handle_back_event(app->scene_manager);
 }
 
-// Memory allocation for app
+// Memory allocation
+static void play_tone_alloc(void* context) {
+    App* app = context;
+
+    app->play_tone_view = view_alloc();
+
+    view_set_draw_callback(app->play_tone_view, play_tone_view_draw_callback);
+    view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
+    app->tuner_state = view_get_model(app->play_tone_view);
+
+    app->tuner_state->currentNoteIndex = 57; // A4
+    app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
+    app->tuner_state->volume = 1.0f;
+    app->tuner_state->isPlaying = false;
+
+    view_set_input_callback(app->play_tone_view, play_tone_input_callback);
+    view_set_context(app->play_tone_view, app);
+
+    view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
+}
+
+static void metronome_alloc(void* context) {
+    App* app = context;
+
+    app->metronome_view = view_alloc();
+
+    view_set_draw_callback(app->metronome_view, metronome_view_draw_callback);
+    view_allocate_model(app->metronome_view, ViewModelTypeLockFree, sizeof(MetronomeState));
+    app->metronome_state = view_get_model(app->metronome_view);
+
+    app->metronome_state->bpm = 120;
+    app->metronome_state->pitch = 57; // A4
+    app->metronome_state->isPlaying = false;
+
+    view_set_input_callback(app->metronome_view, metronome_input_callback);
+    view_set_context(app->metronome_view, app);
+
+    view_dispatcher_add_view(app->view_dispatcher, FlipperTunerMetronomeView, app->metronome_view);
+}
+
 static App* app_alloc() {
     App* app = malloc(sizeof(App));
     app->scene_manager = scene_manager_alloc(&flipper_tuner_scene_manager_handlers, app);
@@ -378,21 +452,9 @@ static App* app_alloc() {
     view_dispatcher_add_view(
         app->view_dispatcher, FlipperTunerTextInputView, text_input_get_view(app->text_input));
 
-    // Play Tone view
-    app->play_tone_view = view_alloc();
+    play_tone_alloc(app);
 
-    view_set_draw_callback(app->play_tone_view, play_tone_view_draw_callback);
-    view_set_input_callback(app->play_tone_view, play_tone_input_callback);
-
-    view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
-    app->tuner_state = view_get_model(app->play_tone_view);
-    app->tuner_state->currentNoteIndex = 57; // A4
-    app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
-    app->tuner_state->volume = 1.0f;
-    app->tuner_state->isPlaying = false;
-    view_set_context(app->play_tone_view, app);
-
-    view_dispatcher_add_view(app->view_dispatcher, FlipperTunerPlayToneView, app->play_tone_view);
+    metronome_alloc(app);
 
     return app;
 }
@@ -405,6 +467,7 @@ static void app_free(App* app) {
     view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerWidgetView);
     view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerTextInputView);
     view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerPlayToneView);
+    view_dispatcher_remove_view(app->view_dispatcher, FlipperTunerMetronomeView);
 
     // Memory free
     scene_manager_free(app->scene_manager);
@@ -412,8 +475,12 @@ static void app_free(App* app) {
     submenu_free(app->submenu);
     widget_free(app->widget);
     text_input_free(app->text_input);
+
     view_free(app->play_tone_view);
     free(app->tuner_state);
+
+    view_free(app->metronome_view);
+    free(app->metronome_state);
     free(app);
 }
 
