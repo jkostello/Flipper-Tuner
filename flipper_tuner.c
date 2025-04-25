@@ -305,7 +305,7 @@ static bool metronome_input_callback(InputEvent* event, void* context) {
 
     bool consumed = false;
 
-    if(event->key == InputKeyBack) {
+    if(event->key == InputKeyBack && event->type == InputTypeShort) {
         scene_manager_handle_back_event(app->scene_manager);
         consumed = true;
     }
@@ -327,7 +327,7 @@ void metronome_view_draw_callback(Canvas* canvas, void* model) {
 }
 
 void flipper_tuner_metronome_scene_on_enter(void* context) {
-    UNUSED(context);
+    App* app = context;
     view_dispatcher_switch_to_view(app->view_dispatcher, FlipperTunerMetronomeView);
 }
 bool flipper_tuner_metronome_scene_on_event(void* context, SceneManagerEvent event) {
