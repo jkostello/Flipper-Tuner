@@ -32,16 +32,17 @@ typedef enum {
 
 typedef struct TunerState {
     float volume;
-    bool isPlaying;
-    NOTE currentNote;
-    int currentNoteIndex;
-    FuriString* currentNoteLabel;
+    bool is_playing;
+    NOTE current_note;
+    int current_note_index;
+    FuriString* current_noteLabel;
 } TunerState;
 
 typedef struct MetronomeState {
     int bpm;
-    bool isPlaying;
-    float pitch;
+    bool is_playing;
+    NOTE accent_note;
+    NOTE normal_note;
 } MetronomeState;
 
 // App object struct
@@ -129,84 +130,95 @@ void flipper_tuner_main_menu_scene_on_exit(void* context) {
     submenu_reset(app->submenu);
 }
 
-void play(TunerState* tunerState) {
+void play(App* app, bool is_tuner) {
     if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(1000)) {
-        furi_hal_speaker_start(tunerState->currentNote.frequency, tunerState->volume);
-        tunerState->isPlaying = true;
+        if(is_tuner) {
+            TunerState* tuner_state = app->tuner_state;
+            furi_hal_speaker_start(tuner_state->current_note.frequency, tuner_state->volume);
+            tuner_state->is_playing = true;
+        } else {
+            MetronomeState* metronome_state = app->metronome_state;
+            furi_hal_speaker_start(metronome_state->normal_note.frequency, 1);
+        }
     }
 }
-void stop(TunerState* tunerState) {
+
+void stop(App* app, bool is_tuner) {
     if(furi_hal_speaker_is_mine()) {
         furi_hal_speaker_stop();
         furi_hal_speaker_release();
-        tunerState->isPlaying = false;
+        if(is_tuner) {
+            app->tuner_state->is_playing = false;
+        }
     }
 }
 
-void restart_player(TunerState* tunerState) {
-    if(tunerState->isPlaying) {
-        stop(tunerState);
-        play(tunerState);
+void restart(App* app, bool is_tuner) {
+    if(is_tuner) {
+        if(app->tuner_state->is_playing) {
+            stop(app, true);
+            play(app, true);
+        }
     }
 }
 
-void increase_volume(TunerState* tunerState) {
-    if(tunerState->volume < 1.0f) {
-        tunerState->volume += 0.1f;
+void tuner_increase_volume(TunerState* tuner_state) {
+    if(tuner_state->volume < 1.0f) {
+        tuner_state->volume += 0.1f;
     }
 }
 
-void decrease_volume(TunerState* tunerState) {
-    if(tunerState->volume > 0.0f) {
-        tunerState->volume -= 0.1f;
+void tuner_decrease_volume(TunerState* tuner_state) {
+    if(tuner_state->volume > 0.0f) {
+        tuner_state->volume -= 0.1f;
     }
 }
 
-void increase_frequency(TunerState* tunerState, int semitones) {
-    if(tunerState->currentNoteIndex + semitones < get_tunings_size()) {
-        tunerState->currentNoteIndex += semitones;
-        tunerState->currentNote = tunings[tunerState->currentNoteIndex];
+void tuner_increase_frequency(TunerState* tuner_state, int semitones) {
+    if(tuner_state->current_note_index + semitones < get_tunings_size()) {
+        tuner_state->current_note_index += semitones;
+        tuner_state->current_note = tunings[tuner_state->current_note_index];
     }
 }
 
-void decrease_frequency(TunerState* tunerState, int semitones) {
-    if(tunerState->currentNoteIndex - semitones >= 0) {
-        tunerState->currentNoteIndex -= semitones;
-        tunerState->currentNote = tunings[tunerState->currentNoteIndex];
+void tuner_decrease_frequency(TunerState* tuner_state, int semitones) {
+    if(tuner_state->current_note_index - semitones >= 0) {
+        tuner_state->current_note_index -= semitones;
+        tuner_state->current_note = tunings[tuner_state->current_note_index];
     }
 }
 
 // Play tone scene
 static bool play_tone_input_callback(InputEvent* event, void* context) {
     App* app = context;
-    TunerState* tunerState = app->tuner_state;
+    TunerState* tuner_state = app->tuner_state;
     bool consumed = false;
 
     if(event->type == InputTypeShort) {
         // Stop/start
         switch(event->key) {
         case InputKeyOk:
-            if(!tunerState->isPlaying) {
-                play(tunerState);
+            if(!tuner_state->is_playing) {
+                play(app, true);
             } else {
-                stop(tunerState);
+                stop(app, true);
             }
             break;
         case InputKeyUp:
-            increase_volume(tunerState);
-            restart_player(tunerState);
+            tuner_increase_volume(tuner_state);
+            restart(app, true);
             break;
         case InputKeyDown:
-            decrease_volume(tunerState);
-            restart_player(tunerState);
+            tuner_decrease_volume(tuner_state);
+            restart(app, true);
             break;
         case InputKeyLeft:
-            decrease_frequency(tunerState, 1);
-            restart_player(tunerState);
+            tuner_decrease_frequency(tuner_state, 1);
+            restart(app, true);
             break;
         case InputKeyRight:
-            increase_frequency(tunerState, 1);
-            restart_player(tunerState);
+            tuner_increase_frequency(tuner_state, 1);
+            restart(app, true);
             break;
         case InputKeyBack:
             scene_manager_handle_back_event(app->scene_manager);
@@ -214,29 +226,24 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
         default:
             break;
         }
-        with_view_model(
-            app->play_tone_view,
-            TunerState * model,
-            { UNUSED(model); },
-            true); // Call to update view
         consumed = true;
     } else if(event->type == InputTypeLong) {
         switch(event->key) {
         case InputKeyUp:
-            tunerState->volume = 1;
-            restart_player(tunerState);
+            tuner_state->volume = 1;
+            restart(app, true);
             break;
         case InputKeyDown:
-            tunerState->volume = 0;
-            restart_player(tunerState);
+            tuner_state->volume = 0;
+            restart(app, true);
             break;
         case InputKeyLeft:
-            decrease_frequency(tunerState, 12);
-            restart_player(tunerState);
+            tuner_decrease_frequency(tuner_state, 12);
+            restart(app, true);
             break;
         case InputKeyRight:
-            increase_frequency(tunerState, 12);
-            restart_player(tunerState);
+            tuner_increase_frequency(tuner_state, 12);
+            restart(app, true);
             break;
         case InputKeyBack:
             scene_manager_handle_back_event(app->scene_manager);
@@ -244,19 +251,20 @@ static bool play_tone_input_callback(InputEvent* event, void* context) {
         default:
             break;
         }
-        with_view_model(
-            app->play_tone_view,
-            TunerState * model,
-            { UNUSED(model); },
-            true); // Call to update view
         consumed = true;
     }
+
+    with_view_model(
+        app->play_tone_view,
+        TunerState * model,
+        { UNUSED(model); },
+        true); // Call to update view
     return consumed;
 }
 
 void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     furi_assert(model);
-    TunerState* tunerState = model;
+    TunerState* tuner_state = model;
 
     canvas_draw_frame(canvas, 0, 0, 128, 64);
     canvas_set_font(canvas, FontPrimary);
@@ -264,11 +272,11 @@ void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     FuriString* info = furi_string_alloc();
 
     // Draw note label
-    furi_string_printf(info, "< %s >", tunerState->currentNote.label);
+    furi_string_printf(info, "< %s >", tuner_state->current_note.label);
     canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, furi_string_get_cstr(info));
 
     // Draw volume
-    int volumePercent = (int)round(tunerState->volume * 100);
+    int volumePercent = (int)round(tuner_state->volume * 100);
     furi_string_printf(info, "Volume: %d%%", volumePercent);
     canvas_draw_str_aligned(canvas, 64, 36, AlignCenter, AlignCenter, furi_string_get_cstr(info));
 
@@ -276,8 +284,8 @@ void play_tone_view_draw_callback(Canvas* canvas, void* model) {
 
     // Draw controls
     canvas_set_font(canvas, FontSecondary);
-    tunerState->isPlaying ? elements_button_center(canvas, "Stop") :
-                            elements_button_center(canvas, "Play");
+    tuner_state->is_playing ? elements_button_center(canvas, "Stop") :
+                              elements_button_center(canvas, "Play");
     elements_button_right(canvas, "Note ^");
     elements_button_left(canvas, "Note v");
     elements_button_down(canvas, "Vol v");
@@ -295,20 +303,46 @@ bool flipper_tuner_play_tone_scene_on_event(void* context, SceneManagerEvent eve
 }
 void flipper_tuner_play_tone_scene_on_exit(void* context) {
     App* app = context;
-    if(app->tuner_state->isPlaying) {
-        stop(app->tuner_state);
+    if(app->tuner_state->is_playing) {
+        stop(app, true);
+    }
+}
+
+void metronome_loop(App* app) {
+    if(app->metronome_state->is_playing) {
+        play(app, false);
+        furi_delay_ms(100);
+        stop(app, false);
+        furi_delay_ms(500); // 120 BPM: 2 beats/second: 1 beat/0.5 second
+        metronome_loop(app);
     }
 }
 
 static bool metronome_input_callback(InputEvent* event, void* context) {
     App* app = context;
+    MetronomeState* metronome_state = app->metronome_state;
 
     bool consumed = false;
 
-    if(event->key == InputKeyBack && event->type == InputTypeShort) {
-        scene_manager_handle_back_event(app->scene_manager);
+    if(event->type == InputTypeShort) {
+        switch(event->key) {
+        case InputKeyOk:
+            metronome_state->is_playing = !metronome_state->is_playing;
+            metronome_loop(app);
+            break;
+        case InputKeyBack:
+            scene_manager_handle_back_event(app->scene_manager);
+            break;
+        default:
+            break;
+        }
         consumed = true;
     }
+    with_view_model(
+        app->metronome_view,
+        MetronomeState * model,
+        { UNUSED(model); },
+        true); // Call to update view
 
     return consumed;
 }
@@ -324,6 +358,11 @@ void metronome_view_draw_callback(Canvas* canvas, void* model) {
     furi_string_printf(info, "BPM: %d", metronome_state->bpm);
     canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, furi_string_get_cstr(info));
     furi_string_free(info);
+
+    // Draw controls
+    canvas_set_font(canvas, FontSecondary);
+    metronome_state->is_playing ? elements_button_center(canvas, "Stop") :
+                                  elements_button_center(canvas, "Play");
 }
 
 void flipper_tuner_metronome_scene_on_enter(void* context) {
@@ -392,10 +431,10 @@ static void play_tone_alloc(void* context) {
     view_allocate_model(app->play_tone_view, ViewModelTypeLockFree, sizeof(TunerState));
     app->tuner_state = view_get_model(app->play_tone_view);
 
-    app->tuner_state->currentNoteIndex = 57; // A4
-    app->tuner_state->currentNote = tunings[app->tuner_state->currentNoteIndex];
+    app->tuner_state->current_note_index = 57; // A4
+    app->tuner_state->current_note = tunings[app->tuner_state->current_note_index];
     app->tuner_state->volume = 1.0f;
-    app->tuner_state->isPlaying = false;
+    app->tuner_state->is_playing = false;
 
     view_set_input_callback(app->play_tone_view, play_tone_input_callback);
     view_set_context(app->play_tone_view, app);
@@ -413,8 +452,9 @@ static void metronome_alloc(void* context) {
     app->metronome_state = view_get_model(app->metronome_view);
 
     app->metronome_state->bpm = 120;
-    app->metronome_state->pitch = 57; // A4
-    app->metronome_state->isPlaying = false;
+    app->metronome_state->accent_note = tunings[69]; // A5
+    app->metronome_state->normal_note = tunings[57]; // A4
+    app->metronome_state->is_playing = false;
 
     view_set_input_callback(app->metronome_view, metronome_input_callback);
     view_set_context(app->metronome_view, app);
