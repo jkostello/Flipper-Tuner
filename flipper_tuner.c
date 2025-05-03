@@ -43,6 +43,7 @@ typedef struct MetronomeState {
     bool is_playing;
     NOTE accent_note;
     NOTE normal_note;
+    int beats_per_measure;
     int current_beat_count;
     FuriTimer* timer;
 } MetronomeState;
@@ -143,7 +144,8 @@ void play(App* app, bool is_tuner) {
             if(metronome_state->current_beat_count == 1) {
                 furi_hal_speaker_start(app->metronome_state->accent_note.frequency, 1);
             } else {
-                furi_hal_speaker_start(app->metronome_state->normal_note.frequency, 1);
+                furi_hal_speaker_start(
+                    app->metronome_state->normal_note.frequency, 0.4); // FIXME: change vol to 1
             }
         }
     }
@@ -323,7 +325,7 @@ void metronome_timer_callback(void* context) {
     stop(app, false);
 
     // Increase beat count
-    if(app->metronome_state->current_beat_count == 4) {
+    if(app->metronome_state->current_beat_count == app->metronome_state->beats_per_measure) {
         app->metronome_state->current_beat_count = 1; // Reset
     } else {
         app->metronome_state->current_beat_count += 1;
@@ -331,7 +333,7 @@ void metronome_timer_callback(void* context) {
 }
 
 static uint32_t state_to_sleep_ticks(MetronomeState* metronome_state) {
-    // calculate time between beeps
+    // Calculate time between beeps
     uint32_t tps = furi_kernel_get_tick_frequency();
     double multiplier = 4.0 / 4;
     double bps = (double)metronome_state->bpm / 60;
@@ -346,12 +348,26 @@ void restart_timer(MetronomeState* metronome_state) {
 }
 
 void increase_bpm(MetronomeState* metronome_state, int amount) {
+    if(metronome_state->bpm == 280) return; // BPM ceiling
     metronome_state->bpm += amount;
     restart_timer(metronome_state);
 }
 
 void decrease_bpm(MetronomeState* metronome_state, int amount) {
+    if(metronome_state->bpm == 60) return; // BPM floor
     metronome_state->bpm -= amount;
+    restart_timer(metronome_state);
+}
+
+void increase_notes_per_measure(MetronomeState* metronome_state, int amount) {
+    if(metronome_state->beats_per_measure == 16) return; // NPM ceiling
+    metronome_state->beats_per_measure += amount;
+    restart_timer(metronome_state);
+}
+
+void decrease_notes_per_measure(MetronomeState* metronome_state, int amount) {
+    if(metronome_state->beats_per_measure == 1) return; // NPM floor
+    metronome_state->beats_per_measure -= amount;
     restart_timer(metronome_state);
 }
 
@@ -374,6 +390,12 @@ static bool metronome_input_callback(InputEvent* event, void* context) {
             break;
         case InputKeyDown:
             decrease_bpm(metronome_state, 1);
+            break;
+        case InputKeyRight:
+            increase_notes_per_measure(metronome_state, 1);
+            break;
+        case InputKeyLeft:
+            decrease_notes_per_measure(metronome_state, 1);
             break;
         case InputKeyBack:
             scene_manager_handle_back_event(app->scene_manager);
@@ -412,8 +434,15 @@ void metronome_view_draw_callback(Canvas* canvas, void* model) {
     canvas_set_font(canvas, FontPrimary);
 
     FuriString* info = furi_string_alloc();
+
+    // Draw BPM
     furi_string_printf(info, "BPM: %d", metronome_state->bpm);
-    canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, furi_string_get_cstr(info));
+    canvas_draw_str_aligned(canvas, 64, 21, AlignCenter, AlignCenter, furi_string_get_cstr(info));
+
+    // Draw time signature
+    furi_string_printf(info, "%d/4", metronome_state->beats_per_measure);
+    canvas_draw_str_aligned(canvas, 64, 33, AlignCenter, AlignCenter, furi_string_get_cstr(info));
+
     furi_string_free(info);
 
     // Draw controls
@@ -422,7 +451,12 @@ void metronome_view_draw_callback(Canvas* canvas, void* model) {
                                   elements_button_center(canvas, "Play");
     elements_button_up(canvas, "BPM ^");
     elements_button_down(canvas, "BPM v");
-    elements_progress_bar(canvas, 28, 36, 72, (double)metronome_state->current_beat_count / 4);
+    elements_progress_bar(
+        canvas,
+        28,
+        41,
+        72,
+        (double)metronome_state->current_beat_count / metronome_state->beats_per_measure);
 }
 
 void flipper_tuner_metronome_scene_on_enter(void* context) {
@@ -519,7 +553,9 @@ static void metronome_alloc(void* context) {
     app->metronome_state->accent_note = tunings[69]; // A5
     app->metronome_state->normal_note = tunings[57]; // A4
     app->metronome_state->is_playing = false;
+    app->metronome_state->beats_per_measure = 4;
     app->metronome_state->current_beat_count = 1;
+
     app->metronome_state->timer =
         furi_timer_alloc(metronome_timer_callback, FuriTimerTypePeriodic, app);
 
