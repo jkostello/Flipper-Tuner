@@ -15,7 +15,7 @@
 #include <flipper_tuner_icons.h>
 
 const int beats_per_measure_options[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-//const float volumes[11] = {0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1};
+const float volumes[11] = {0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1};
 
 //// Enum/struct setups
 
@@ -52,6 +52,7 @@ typedef struct MetronomeState {
     int beats_per_measure;
     int current_beat_count;
     bool accent_first_note;
+    float volume;
 } MetronomeState;
 
 // App object struct
@@ -80,10 +81,7 @@ int get_tunings_size() {
     return (sizeof(tunings) / sizeof(tunings[0]));
 }
 
-// char* int_to_string(int, char* format) {
-//     // TODO: implement
-// }
-
+// Main Menu scene
 void flipper_tuner_menu_callback(void* context, uint32_t index) {
     App* app = context;
     switch(index) {
@@ -98,7 +96,6 @@ void flipper_tuner_menu_callback(void* context, uint32_t index) {
     }
 }
 
-// Main Menu scene
 void flipper_tuner_main_menu_scene_on_enter(void* context) {
     App* app = context;
     submenu_reset(app->submenu); // Reset submenu
@@ -155,9 +152,9 @@ void play_metronome(App* app) {
     MetronomeState* metronome_state = app->metronome_state;
 
     if(metronome_state->current_beat_count == 1 && metronome_state->accent_first_note) {
-        furi_hal_speaker_start(app->metronome_state->accent_note.frequency, 1);
+        furi_hal_speaker_start(metronome_state->accent_note.frequency, metronome_state->volume);
     } else {
-        furi_hal_speaker_start(app->metronome_state->normal_note.frequency, 1);
+        furi_hal_speaker_start(metronome_state->normal_note.frequency, metronome_state->volume);
     }
 }
 
@@ -304,8 +301,8 @@ void play_tone_view_draw_callback(Canvas* canvas, void* model) {
     canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, furi_string_get_cstr(info));
 
     // Draw volume
-    int volumePercent = (int)round(tuner_state->volume * 100);
-    furi_string_printf(info, "Volume: %d%%", volumePercent);
+    int volume_percent = (int)round(tuner_state->volume * 100);
+    furi_string_printf(info, "Volume: %d%%", volume_percent);
     canvas_draw_str_aligned(canvas, 64, 36, AlignCenter, AlignCenter, furi_string_get_cstr(info));
 
     furi_string_free(info);
@@ -463,6 +460,7 @@ void metronome_view_draw_callback(Canvas* canvas, void* model) {
         41,
         72,
         (double)metronome_state->current_beat_count / metronome_state->beats_per_measure);
+    elements_button_right(canvas, "Settings");
 }
 
 void flipper_tuner_metronome_scene_on_enter(void* context) {
@@ -486,10 +484,10 @@ void flipper_tuner_metronome_scene_on_exit(void* context) {
 // Metronome Settings Scene & View
 void beats_per_measure_change_callback(VariableItem* item) {
     App* app = variable_item_get_context(item);
+    FuriString* info = furi_string_alloc();
 
     // Get bpm info
     uint8_t index = variable_item_get_current_value_index(item);
-    FuriString* info = furi_string_alloc();
     furi_string_printf(info, "%d", beats_per_measure_options[index]);
 
     // Set text & variable
@@ -508,6 +506,20 @@ void accent_first_note_change_callback(VariableItem* item) {
         variable_item_set_current_value_text(item, "No");
         app->metronome_state->accent_first_note = false;
     }
+}
+
+void volume_change_callback(VariableItem* item) {
+    App* app = variable_item_get_context(item);
+    FuriString* info = furi_string_alloc();
+
+    // Get volume info
+    uint8_t index = variable_item_get_current_value_index(item);
+    furi_string_printf(
+        info, "%d%%", (int)round(volumes[variable_item_get_current_value_index(item)] * 100));
+
+    // Set text & variable
+    variable_item_set_current_value_text(item, furi_string_get_cstr(info));
+    app->metronome_state->volume = volumes[index];
 }
 
 void flipper_tuner_metronome_settings_scene_on_enter(void* context) {
@@ -594,6 +606,7 @@ static void metronome_settings_alloc(void* context) {
     App* app = context;
 
     app->variable_item_list = variable_item_list_alloc();
+    FuriString* info = furi_string_alloc(); // Use FuriString to get data into string format
 
     // Define beats per measure
     app->metronome_state->beats_per_measure = 4;
@@ -604,13 +617,10 @@ static void metronome_settings_alloc(void* context) {
         COUNT_OF(beats_per_measure_options),
         beats_per_measure_change_callback,
         app);
-    // Set values for beats per measure
     variable_item_set_current_value_index(bpm, app->metronome_state->beats_per_measure - 1);
-    FuriString* info = furi_string_alloc();
     furi_string_printf(
         info, "%d", beats_per_measure_options[variable_item_get_current_value_index(bpm)]);
     variable_item_set_current_value_text(bpm, furi_string_get_cstr(info));
-    furi_string_free(info);
 
     // Define accent first note
     app->metronome_state->accent_first_note = true;
@@ -619,6 +629,18 @@ static void metronome_settings_alloc(void* context) {
         app->variable_item_list, "Accent First Note", 2, accent_first_note_change_callback, app);
     variable_item_set_current_value_index(accent, 0); // Initialize to "Yes"
     variable_item_set_current_value_text(accent, "Yes");
+
+    // Define volume
+    app->metronome_state->volume = 1;
+
+    VariableItem* vol = variable_item_list_add(
+        app->variable_item_list, "Volume", COUNT_OF(volumes), volume_change_callback, app);
+    variable_item_set_current_value_index(vol, COUNT_OF(volumes) - 1); // Max volume
+    furi_string_printf(
+        info, "%d%%", (int)round(volumes[variable_item_get_current_value_index(vol)] * 100));
+    variable_item_set_current_value_text(vol, furi_string_get_cstr(info));
+
+    furi_string_free(info);
 
     view_dispatcher_add_view(
         app->view_dispatcher,
