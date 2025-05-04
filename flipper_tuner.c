@@ -366,14 +366,20 @@ void restart_timer(MetronomeState* metronome_state) {
 }
 
 void increase_bpm(MetronomeState* metronome_state, int amount) {
-    if(metronome_state->bpm == 280) return; // BPM ceiling
-    metronome_state->bpm += amount;
+    if(metronome_state->bpm + amount >= 360) {
+        metronome_state->bpm = 280; // BPM ceiling
+    } else {
+        metronome_state->bpm += amount;
+    }
     restart_timer(metronome_state);
 }
 
 void decrease_bpm(MetronomeState* metronome_state, int amount) {
-    if(metronome_state->bpm == 60) return; // BPM floor
-    metronome_state->bpm -= amount;
+    if(metronome_state->bpm - amount <= 60) {
+        metronome_state->bpm = 60; // BPM floor
+    } else {
+        metronome_state->bpm -= amount;
+    }
     restart_timer(metronome_state);
 }
 
