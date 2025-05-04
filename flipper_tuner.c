@@ -421,6 +421,9 @@ static bool metronome_input_callback(InputEvent* event, void* context) {
         case InputKeyDown:
             decrease_bpm(metronome_state, 10);
             break;
+        case InputKeyBack:
+            scene_manager_handle_back_event(app->scene_manager);
+            break;
         default:
             break;
         }
