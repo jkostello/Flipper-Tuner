@@ -367,7 +367,7 @@ void restart_timer(MetronomeState* metronome_state) {
 
 void increase_bpm(MetronomeState* metronome_state, int amount) {
     if(metronome_state->bpm + amount >= 360) {
-        metronome_state->bpm = 280; // BPM ceiling
+        metronome_state->bpm = 360; // BPM ceiling
     } else {
         metronome_state->bpm += amount;
     }
